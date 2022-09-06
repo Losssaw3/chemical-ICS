@@ -18,7 +18,12 @@ There is the main options for running the demo:
 There shall be docker-compose locally available - at least for running message broker (Kafka).
 
 ### Running complete demo in containerized mode
-
+be sure that you have got directories db in equipments, bre, storage and documents directories - you should have enough rules to use them by docker - for examle, _chmod 777 ./db_ will help you.
+if it's first use, use next commands one by one:
+- _docker-compose build_
+- _make prepare_
+- _make run_
+- _make create_topics_
 execute in VS Code terminal window either
 - _make run_
 - or _docker-compose up_
@@ -27,3 +32,4 @@ execute in VS Code terminal window either
 #### Troubleshooting
 
 - if kafka or zookeeper containers don't start, make sure you don't have containers with the same name. If you do, remove the old containers and run the demo again.
+- also broken can be down after start - use _up_ command to reload it and everything will be okay.
