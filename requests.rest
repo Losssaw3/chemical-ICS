@@ -1,0 +1,91 @@
+### create new order
+
+POST http://0.0.0.0:6006/ordering HTTP/1.1
+content-type: application/json
+auth: very-secure-token
+
+{
+    "mix": [
+        "A",
+        "B",
+        "cathalizator"
+    ],
+    "amount": [
+        100,
+        10,
+        11
+    ],
+    "from": [
+        "storage",
+        "balloon",
+        "storage"
+    ],
+    "using": [
+        "list"
+    ]  
+} 
+
+
+### send the pincode
+
+POST http://localhost:6006/pincoding HTTP/1.1
+
+content-type: application/json
+
+auth: very-secure-token
+
+{
+    "pincode": 12345
+} 
+
+
+# "bool": true,
+        # "stor": {
+        #     "A" : 100,
+        #     "B" : 11,
+        #     "cat" : 10
+        # },
+        # "equip": {
+        #     "A" : "storage",
+        #     "B" : "balloon",
+        #     "cat" : "list"
+        # },
+        # "using": [
+        #     "list"
+        # ]
+
+
+# {
+#   "mix": [
+#     "A",
+#     "B"
+#   ],
+#   "amount": [
+#     100,
+#     100
+#   ],
+#   "from": [
+#     "storage",
+#     "balloon"
+#   ],
+#   "cathalizator": "",
+#   "cat_amount": 0,
+#   "using": "list"
+# }
+
+# {
+#   "bool": true,
+#   "stor": {
+#     "A" : 100,
+#     "B" : 11,
+#     "cat" : 10
+#   },
+#   "equip": {
+#     "A" : "storage",
+#     "B" : "balloon",
+#     "cat" : "list"
+#   },
+#   "using": [
+#     "list"
+#   ]
+# }

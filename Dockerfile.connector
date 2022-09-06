@@ -1,0 +1,19 @@
+FROM python:3.8-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1
+
+ENV PYTHONUNBUFFERED=1
+
+COPY requirements.txt .
+RUN python -m pip install -r requirements.txt
+
+COPY connector /connector
+COPY config.ini /connector/
+
+RUN adduser -u 5678 --disabled-password --gecos "" appuser && chown -R appuser /connector
+USER appuser
+
+WORKDIR /connector
+CMD ["python", "connector.py", "config.ini"]
+
+EXPOSE 6006
