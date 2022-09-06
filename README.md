@@ -19,11 +19,13 @@ There shall be docker-compose locally available - at least for running message b
 
 ### Running complete demo in containerized mode
 be sure that you have got directories db in equipments, bre, storage and documents directories - you should have enough rules to use them by docker - for examle, _chmod 777 ./db_ will help you.
+
 if it's first use, use next commands one by one:
 - _docker-compose build_
 - _make prepare_
 - _make run_
 - _make create_topics_
+
 execute in VS Code terminal window either
 - _make run_
 - or _docker-compose up_
