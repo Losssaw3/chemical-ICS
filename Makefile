@@ -68,10 +68,6 @@ permissions:
 	chmod u+x $(PATH_PREFIX)/chemical-ICS/monitor/monitor.py
 	chmod u+x $(PATH_PREFIX)/chemical-ICS/reporter/reporter.py
 	chmod u+x $(PATH_PREFIX)/chemical-ICS/storage/storage.py
-	chmod 766 $(PATH_PREFIX)/chemical-ICS/document/db
-	chmod 766 $(PATH_PREFIX)/chemical-ICS/storage/db
-	chmod 766 $(PATH_PREFIX)/chemical-ICS/equiment/db
-	chmod 766 $(PATH_PREFIX)/chemical-ICS/bre/db
 
 pipenv:
 	pipenv install -r requirements.txt
