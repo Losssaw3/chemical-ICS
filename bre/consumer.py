@@ -69,15 +69,15 @@ def handle_event(id, details_str):
             # amount_link_amount INTEGER
             execute_query(connection, create_table)
 
-            create_storage = """
-            INSERT INTO
-            bre (rule, element, temperature, operation)
-            VALUES
-            (1, 'list', 500, 'more'),
-            (3, 'balloon', 50, 'less')
-            """
+            #create_storage = """
+            #INSERT INTO
+            #bre (rule, element, temperature, operation)
+            #VALUES
+            #(1, 'list', 500, 'more'),
+            #(3, 'balloon', 50, 'less')
+            #"""
             #(2, 'cathalizator', 2, 0, 'A', 50),
-            execute_query(connection, create_storage)
+            #execute_query(connection, create_storage)
             
             select_bre = "SELECT * from bre"
             selected_bre= execute_read_query(connection, select_bre)
