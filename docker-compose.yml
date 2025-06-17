@@ -95,6 +95,15 @@ services:
     ports:
       - "6006:6006"
 
+
+  crypto:
+    image: crypto
+    build:
+      context: .
+      dockerfile: ./Dockerfile.crypto
+    depends_on:
+      - broker
+
   storage:
     image: storage
     build:

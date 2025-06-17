@@ -10,6 +10,7 @@ import time
 from confluent_kafka import Consumer, OFFSET_BEGINNING
 from flask import request
 import json
+import os
 from producer import proceed_to_deliver
 
 
@@ -34,6 +35,9 @@ def execute_query(connection, query):
     except sqlite3.Error as e:
         print(f"The error '{e}' occurred")
 
+def database_exists(db_path):
+    return os.path.exists(db_path)
+
 def execute_read_query(connection, query):
     cursor = connection.cursor()
     result = None
@@ -46,40 +50,45 @@ def execute_read_query(connection, query):
 
 def handle_event(id, details_str):
     details = json.loads(details_str)
+    db_path = './db/document.db'
     print(f"[info] handling event {id}, {details['source']}->{details['deliver_to']}: {details['operation']}")
     try:
         delivery_required = False
         if details['operation'] == 'need_acts':
-            connection = create_connection('./db/document.db')
-            # create_table = """
-            # CREATE TABLE IF NOT EXISTS documents (
-            # id INTEGER PRIMARY KEY AUTOINCREMENT,
-            # name TEXT NOT NULL,
-            # rule INTEGER
-            # );
-            # """
-            # execute_query(connection, create_table)
+            if not database_exists(db_path):
+                connection = create_connection(db_path)
+                create_table = """
+                CREATE TABLE IF NOT EXISTS documents (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                rule INTEGER
+                );
+                """
+                execute_query(connection, create_table)
 
-            # create_users = """
-            # INSERT INTO
-            # documents (name, rule)
-            # VALUES
-            # ('Технология производства серной кислоты от 04.04.1985, п12', 1),
-            # ('Технология производства серной кислоты от 04.04.1985', 2),
-            # ('Приказ 1234 от 12.09.1967', 3)
-            # """
-            # execute_query(connection, create_users)
-            arr = ''
-            for x in details['rules']:
-                arr+=str(x) + ','
-            arr = arr[:-1]
-            select_users = "SELECT * from documents WHERE rule IN ( %s )" % arr
-            rules = execute_read_query(connection, select_users)
-            connection.close()
-            details['acts'] = rules
-            details['operation'] = 'acts_req'
-            details['deliver_to'] = 'reporter'
-            delivery_required = True
+                create_users = """
+                INSERT INTO
+                documents (name, rule)
+                VALUES
+                ('Технология производства серной кислоты от 04.04.1985, п12', 1),
+                ('Технология производства серной кислоты от 04.04.1985', 2),
+                ('Приказ 1234 от 12.09.1967', 3)
+                """
+                execute_query(connection, create_users)
+                connection.close()
+            else:
+                connection = create_connection(db_path)
+                arr = ''
+                for x in details['rules']:
+                    arr+=str(x) + ','
+                arr = arr[:-1]
+                select_users = "SELECT * from documents WHERE rule IN ( %s )" % arr
+                rules = execute_read_query(connection, select_users)
+                connection.close()
+                details['acts'] = rules
+                details['operation'] = 'acts_req'
+                details['deliver_to'] = 'reporter'
+                delivery_required = True
         else:
             print(f"[warning] unknown operation!\n{details}")                
         if delivery_required:

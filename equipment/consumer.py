@@ -10,6 +10,7 @@ from confluent_kafka import Consumer, OFFSET_BEGINNING
 import json
 from producer import proceed_to_deliver
 import base64
+import os
 
 
 _requests_queue: multiprocessing.Queue = None
@@ -50,50 +51,72 @@ def mixing(id, details):
     details['operation'] = 'operation_status'
     proceed_to_deliver(id, details)
         
+def clear_database(connection):
+    """Очищает все данные из таблицы storage"""
+    try:
+        cursor = connection.cursor()
+        cursor.execute("DELETE FROM equipment")
+        connection.commit()
+        print("База данных очищена")
+        return True
+    except sqlite3.Error as e:
+        print(f"Ошибка при очистке базы: {e}")
+        return False
+
+def database_exists(db_path):
+    return os.path.exists(db_path)
 
 def handle_event(id, details_str):
     details = json.loads(details_str)
     print(f"[info] handling event {id}, {details['source']}->{details['deliver_to']}: {details['operation']}")
     try:
         delivery_required = False
+        db_path = './db/equipment.db'
+        
         if details['operation'] == 'ask_equipment':
             
-            connection = create_connection('./db/equipmnet.db')
-            # create_table = """
-            # CREATE TABLE IF NOT EXISTS equipment (
-            # id INTEGER PRIMARY KEY AUTOINCREMENT,
-            # name TEXT NOT NULL,
-            # number INTEGER,
-            # status BOOL
-            # );
-            # """
-            # execute_query(connection, create_table)
+            # Проверяем, нужно ли создавать базу данных
+            if not database_exists(db_path):
+                
+                print("Создаем базу данных оборудования...")
+                connection = create_connection(db_path)
+                
+                create_table = """
+                CREATE TABLE IF NOT EXISTS equipment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                number INTEGER,
+                status BOOL
+                );
+                """
+                execute_query(connection, create_table)
 
-            # create_equipment = """
-            # INSERT INTO
-            # equipment (name, number, status)
-            # VALUES
-            # ('list', 11, TRUE),
-            # ('list', 22, TRUE),
-            # ('list', 33, TRUE),
-            # ('balloon', 11, FALSE),
-            # ('balloon', 12, FALSE),
-            # ('balloon', 13, FALSE),
-            # ('balloon', 14, FALSE)
-            # """
-            # execute_query(connection, create_equipment)
+                create_equipment = """
+                INSERT INTO
+                equipment (name, number, status)
+                VALUES
+                ('list', 11, TRUE),
+                ('list', 22, TRUE),
+                ('list', 33, TRUE),
+                ('balloon', 11, FALSE),
+                ('balloon', 12, FALSE),
+                ('balloon', 13, FALSE),
+                ('balloon', 14, FALSE)
+                """
+                execute_query(connection, create_equipment)
+                connection.close()  
+            connection = create_connection(db_path)
+            select_equipment = "SELECT * from equipment"
+            selected_equipment = execute_read_query(connection, select_equipment)
+            print(selected_equipment)
 
-            # select_equipment = "SELECT * from equipment"
-            # selected_equipment = execute_read_query(connection, select_equipment)
-            # print(selected_equipment)
-
-            # update_status = """
-            #         UPDATE
-            #         equipment
-            #         SET
-            #         status = TRUE
-            #         """
-            # execute_query(connection, update_status)
+            update_status = """
+                         UPDATE
+                         equipment
+                         SET
+                         status = TRUE
+                         """
+            execute_query(connection, update_status)
 
             for x in details['from']:
                 if not x == 'storage':
@@ -148,8 +171,7 @@ def handle_event(id, details_str):
         elif details['operation'] == 'confirmation':
             if details['bool']:
                 threading.Thread(target=lambda: mixing(id, details)).start()
-            #todo connect with mixing thread ending if it's exist
-            connection = create_connection('./db/equipmnet.db')
+            connection = create_connection('./db/equipment.db')
             for x in details['from']:
                 if not x == 'storage':
                     number = str(x[x.find('#')+1:x.find('!')])

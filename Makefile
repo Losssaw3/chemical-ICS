@@ -1,4 +1,4 @@
-PATH_PREFIX=~
+PATH_PREFIX := $(CURDIR)
 
 create-topics:
 	docker exec broker \
@@ -49,10 +49,22 @@ create-topics:
     --bootstrap-server localhost:9092 \
     --replication-factor 1 \
     --partitions 1
+  kafka-topics --create --if-not-exists \
+    --topic crypto \
+    --bootstrap-server localhost:9092 \
+    --replication-factor 1 \
+    --partitions 1
 
+all: clean build run-broker delay30s run delay60s test
+
+delay30s:
+	sleep 30
+
+delay60s:
+	sleep 60
 
 sys-packages:
-	# sudo apt install -y docker-compose
+	sudo apt install -y docker-compose
 	sudo apt install python3-pip -y
 	sudo pip install pipenv
 
@@ -60,26 +72,26 @@ broker:
 	docker-compose -f kafka/docker-compose.yaml up -d
 
 permissions:
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/bre/bre.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/connector/connector.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/document/document.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/equipment/equipment.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/mixer/mixer.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/monitor/monitor.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/reporter/reporter.py
-	chmod u+x $(PATH_PREFIX)/chemical-ICS/storage/storage.py
+	chmod a+w $(PATH_PREFIX)/storage/db
+	chmod a+w $(PATH_PREFIX)/bre/db
+	chmod a+w $(PATH_PREFIX)/storage/db/storage.db
+	chmod a+w $(PATH_PREFIX)/bre/db/bre.db
+	chmod a+w $(PATH_PREFIX)/equipment/db/equipment.db
+	chmod a+w $(PATH_PREFIX)/equipment/db/
+	chmod u+x $(PATH_PREFIX)/bre/bre.py
+	chmod u+x $(PATH_PREFIX)/connector/connector.py
+	chmod u+x $(PATH_PREFIX)/document/document.py
+	chmod u+x $(PATH_PREFIX)/equipment/equipment.py
+	chmod u+x $(PATH_PREFIX)/mixer/mixer.py
+	chmod u+x $(PATH_PREFIX)/monitor/monitor.py
+	chmod u+x $(PATH_PREFIX)/reporter/reporter.py
+	chmod u+x $(PATH_PREFIX)/storage/storage.py
+	chmod u+x $(PATH_PREFIX)/storage/crypto.py
 
 pipenv:
 	pipenv install -r requirements.txt
 
 prepare: sys-packages permissions pipenv build run-broker
-
-prepare-screen:
-	# WSL specific preparation
-	sudo /etc/init.d/screen-cleanup start
-
-
-run-screen: broker run-bre-screen run-connector-screen run-document-screen run-equipment-screen run-mixer-screen run-monitor-screen run-reporter-screen run-storage-screen
 
 build:
 	docker-compose build
@@ -90,63 +102,12 @@ run-broker:
 run:
 	docker-compose up -d
 
-restart:
-	docker-compose restart
-
-stop-app:
-	pkill flask
-
-restart-app: stop-app run
-
-
-run-monitor-screen:
-	screen -dmS monitor bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run ./monitor/monitor.py config.ini"
-
-run-monitor:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run ./monitor/monitor.py config.ini
-
-
-run-bre:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run bre/bre.py config.ini
-
-run-bre-screen:
-	screen -dmS bre bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run bre/bre.py config.ini"
-
-run-connector:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run connector/connector.py config.ini
-
-run-connector-screen:
-	screen -dmS connector bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run connector/connector.py config.ini"
-
-run-document:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run document/document.py config.ini
-
-run-document-screen:
-	screen -dmS document bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run document/document.py config.ini"
-
-run-equipment:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run equipment/equipment.py config.ini
-
-run-equipment-screen:
-	screen -dmS equipment bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run equipment/equipment.py config.ini"
-
-run-mixer:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run mixer/mixer.py config.ini
-
-run-mixer-screen:
-	screen -dmS mixer bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run mixer/mixer.py config.ini"
-
-run-reporter:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run reporter/reporter.py config.ini
-
-run-reporter-screen:
-	screen -dmS reporter bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run reporter/reporter.py config.ini"
-
-run-storage:
-	cd $(PATH_PREFIX)/chemical-ICS/; pipenv run storage/storage.py config.ini
-
-run-storage-screen:
-	screen -dmS storage bash -c "cd $(PATH_PREFIX)/chemical-ICS/; pipenv run storage/storage.py config.ini"
-
 test:
 	pytest -sv
+
+logs:
+	docker-compose logs -f --tail 100
+
+clean:
+	docker-compose down; pipenv --rm; rm -f Pipfile*; echo cleanup complete
+

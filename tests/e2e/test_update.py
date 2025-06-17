@@ -1,159 +1,108 @@
 from time import sleep
 import pytest
-import re
+import subprocess
 import json
+import re
+import requests
+import sqlite3
 from urllib.request import urlopen, Request
 from uuid import uuid1
 
-APP_URL = "http://localhost:5000"
-FILE_SERVER_URL = "http://localhost:6001"
-MANAGER_URL = "http://localhost:6000"
 
-APP_UPDATE_FILE = "file_server/data/app-update.py"
+ORDER_URL = "http://localhost:6006/ordering"
+DB_PATH = "storage/db/storage.db"
 
-def get_app_version() -> str:
-    try:
-        response = urlopen(APP_URL)
-        data = response.read().decode().split(" ")[-1]
-        return data
-    except Exception as e:
-        print(f"failed to access the application: {e}")
-        raise e    
-
-@pytest.fixture
-def app_version() -> str:
-    return get_app_version()
-
-
-def test_app_version(app_version):
-    assert app_version is not None
-
-
-def get_update_version():
-    with open(APP_UPDATE_FILE, "r") as f:
-        version = None
-        update_content = f.read()
-        m = re.search("APP_VERSION = \"(.+)\"", update_content)
-        if m:
-            version = m.group(1)
-        else:
-            raise "version not found"
-    return version
-
-
-def set_update_version(version):
-    old_ver = get_update_version()
-    with open(APP_UPDATE_FILE, "r") as f:
-        data = f.read()
-        data = data.replace(old_ver, version)
-
-    with open(APP_UPDATE_FILE, "w") as f:
-        f.write(data)
-
-    assert get_update_version() == version
+headers = {
+    "Content-Type": "application/json",
+    "auth": "very-secure-token"
+}
+payload = {
+    "mix": [
+        "A",
+        "B",
+        "cathalizator"
+    ],
+    "amount": [
+        100,
+        10,
+        11
+    ],
+    "from": [
+        "storage",
+        "balloon",
+        "storage"
+    ],
+    "using": [
+        "list"
+    ]  
+}
 
 @pytest.fixture
-def update_app_version():
-    orig_version = get_update_version()
-    yield orig_version
-    set_update_version(orig_version)
-
-
-def test_update_app_file_version():
-    with open(APP_UPDATE_FILE, "r") as f:
-        app_update_version = None
-        update_content = f.read()
-        m = re.search("APP_VERSION = \"(.+)\"", update_content)
-        if m:
-            app_update_version = m.group(1)
-            # print(app_update_version)
-        else:
-            print("version not found")
-        assert app_update_version
-
-
-def test_change_file_version(update_app_version):
-    new_version = "e2e-test"
-    assert update_app_version != new_version
-
-    set_update_version(new_version)
-
-    assert get_update_version() == new_version
-
-def get_update_digest():
-    GET_DIGEST_PATH = "/get-digest/app-update.zip"
-    try:
-        response = urlopen(FILE_SERVER_URL + GET_DIGEST_PATH)
-        data = response.read().decode().split(" ")
-        return data
-
-    except Exception as e:
-        print(f"failed to get update file digest: {e}")
-        raise e
-
+def get_pattern():
+    return pattern
+@pytest.fixture
+def get_logs():
+    def _get_logs(container_name):
+        return subprocess.check_output(
+            ['docker-compose', 'logs', '--no-color', container_name],
+            text=True,
+        )
+    return _get_logs
 
 @pytest.fixture
-def update_digest():
-    digest = get_update_digest()
-    return digest
+def create_order():
+    response = requests.post(url = ORDER_URL,headers=headers,json=payload)
+    return response
+
+@pytest.fixture
+def storage_db():
+    connection = sqlite3.connect(DB_PATH)
+    yield connection
+    connection.close()
+
+def clean_equipment_string(s):
+    return re.sub(r'[#!].*', '', s)
 
 
-def test_file_server_access(update_digest):
-    # print(update_digest)
-    assert update_digest is not None
-
-
-def test_modified_digest(update_app_version, update_digest):    
-    new_version = "e2e-test"
-    assert update_app_version != new_version
-
-    set_update_version(new_version)
-    assert get_update_version() == new_version
-    new_digest = get_update_digest()
-    assert update_digest != new_digest
-
-# manager test
-
-def update_app_to_version(version, validate = True):
-    FILE_SERVER_UPDATE_PATHNAME = "/download-update/app-update.zip"    
-    FILE_SERVER_URL_DOCKER = "http://file_server:6001"
-    MANAGER_UPDATE_PATH = "/update"
-    # print(f"updating app to version {version}")
-    set_update_version(version)    
-    digest_str = get_update_digest()[0]
-    header_auth_token = "very-secure-token"
-    update_request_body = {
-        "url": FILE_SERVER_URL_DOCKER+FILE_SERVER_UPDATE_PATHNAME, 
-        "target": "app", 
-        "digest": digest_str, 
-        "digest_alg": "sha256"
+def get_storage_status(connection):
+    debug_query = "SELECT name, amount FROM storage ORDER BY name"
+    cursor = connection.cursor()
+    cursor.execute(debug_query)
+    reagents = {
+        'A': 0,
+        'B': 0, 
+        'C': 0,
+        'cathalizator': 0
     }
-    headers = {'content-type': 'application/json', 'auth': header_auth_token}
-    req = Request(MANAGER_URL+MANAGER_UPDATE_PATH, data=json.dumps(update_request_body).encode(), headers=headers)
-    resp = urlopen(req)
-    assert resp.getcode() == 200
-    if validate is True:     
-        # check if the requested version is set
-        max_retries = 5
-        app_version = None
-        while max_retries > 0:
-            sleep(0.5) 
-            max_retries -= 1
-            app_version = get_app_version()
-            if app_version == version:
-                break
-        assert app_version == version
-    
+    for name, amount in cursor.fetchall():
+        if name in reagents:
+            reagents[name] = amount
+    return reagents
 
-def test_successful_update(update_app_version, app_version):
-    new_version = "e2e-test-" + str(uuid1())
-    assert new_version != update_app_version
-    assert new_version != app_version
-    # will set and validate
-    # print(f"changing target app version to {new_version}")
-    update_app_to_version(new_version)
-    # restore to the original version
-    # print(f"restoring app to version {update_app_version}")
-    update_app_to_version(update_app_version)
 
-# hacked manager test
+
+def test_order_transmission(create_order):
+    response = create_order
+    assert response.status_code == 200
+ 
+def test_reagent_usage(storage_db, get_logs):
+    reagents_before = get_storage_status(storage_db)
+    """Checking..."""
+    sleep(40)
+    reagents_after = get_storage_status(storage_db)
+    logs = get_logs('bre')
+    successful_result = "'result': [True, True]"
+    if successful_result in logs:
+        for i, reagent in enumerate(payload["mix"]):
+            assert reagents_before[reagent] == reagents_after[reagent] + payload["amount"][i]
+    else:
+        for i, reagent in enumerate(payload["mix"]):
+            assert reagents_before[reagent] == reagents_after[reagent]
+
+def test_finish(get_logs):
+    sleep(10)
+    logs = get_logs('connector')
+    cleaned_logs = clean_equipment_string(logs)
+    s1 = (str(payload))[1:]
+    successful_string = s1[:-1]
+    assert successful_string in cleaned_logs

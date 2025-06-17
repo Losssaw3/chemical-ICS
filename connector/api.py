@@ -28,7 +28,7 @@ def ordering():
         ordering_details = {
             "id": req_id,
             "operation": "ordering",
-            "deliver_to": "mixer",
+            "deliver_to": "crypto",
             "source": "connector",
             "bool": False,
             "mix": content['mix'],

@@ -10,7 +10,7 @@ def check_operation(id, details):
     dst = details['deliver_to']
     operation = details['operation']
     if not ordering:
-        if  src == 'connector' and dst == 'mixer' \
+        if  src == 'connector' and dst == 'crypto' \
             and operation == 'ordering' and len(details) == 9 :
             #todo check content of another fields
             #now it helps, cause if another fields set will appear - 
@@ -37,7 +37,7 @@ def check_operation(id, details):
                 authorized = True
                 ordering = True
 
-
+    
     if src == 'mixer' and dst == 'equipment' \
         and operation == 'ask_equipment':
         authorized = True    
@@ -54,11 +54,20 @@ def check_operation(id, details):
         and operation == 'unblock':
         #and details['verified'] is True:
         authorized = True    
-    if src == 'mixer' and dst == 'reporter' \
+    if src == 'mixer' and dst == 'crypto' \
         and operation == 'operation_status':
-        authorized = True    
+        authorized = True
+
+    if src == 'crypto' and dst == 'reporter' \
+        and operation == 'operation_status':
+        authorized = True
+         
     if src == 'mixer' and dst == 'storage' \
         and operation == 'decomission':
+        authorized = True
+
+    if src == 'crypto' and dst == 'mixer' \
+        and operation == 'ordering':
         authorized = True
 
     if src == 'storage' and dst == 'mixer' \
@@ -83,7 +92,12 @@ def check_operation(id, details):
     if  src == 'reporter' and dst == 'document'\
         and operation == 'need_acts':
         authorized = True
-    if  src == 'reporter' and dst == 'connector'\
+    if  src == 'reporter' and dst == 'crypto'\
+        and operation == 'acts':
+        authorized = True
+        ordering = False
+    
+    if  src == 'crypto' and dst == 'connector'\
         and operation == 'acts':
         authorized = True
         ordering = False

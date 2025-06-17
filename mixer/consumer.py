@@ -14,26 +14,17 @@ from producer import proceed_to_deliver
 _requests_queue: multiprocessing.Queue = None
 st_book = False
 saved_details = {"":""}
-flags_read_attemt = 3
 
 def check_flags(details):
-    global flags_read_attemt
-    if flags_read_attemt>0:
-        if st_book:
-            details['deliver_to'] = 'bre'
-            details['operation'] = 'confirmation'
-            proceed_to_deliver(details['id'], details)
-        else:
-            print("Waiting book, trying again")
-            #todo may be "storage_book" request should be here?
-            time.sleep(2)
-            flags_read_attemt-=1
-            check_flags(details)
+    print(details)
+    if st_book:
+        details['deliver_to'] = 'bre'
+        details['operation'] = 'confirmation'
+        proceed_to_deliver(details['id'], details)
     else:
         print('Storage failed, confirmation request can\'t be requsted!')
 
 def status_equipment(details):
-    #todo : now it's a crutch, should be copy func
     time.sleep(1)
     details['operation'] = 'equipment_status_req'
     details['deliver_to'] = 'equipment'
@@ -52,54 +43,44 @@ def handle_event(id: str, details):
     
     print(f"[info] handling event {id}, {details['source']}->{details['deliver_to']}: {details['operation']}")
     try:
-        delivery_required = False
         global st_book 
         global _requests_queue 
         #receive new order, answer - equipment list asking
         if details['operation'] == 'ordering':
-            global st_book 
             st_book = False
             details['operation'] = "ask_equipment"
             details['deliver_to'] = 'equipment'
-            delivery_required = True
+            proceed_to_deliver(id, details)
 
         #list of booked equipment, answer - booking storage and asking equipment status
         elif details['operation'] == 'list_equipment':
-            book_storage(details)
             copy_details = details
             status_equipment(copy_details)
-            delivery_required = False
 
         #equipment status, check that storage booked, answer - confirmation to bre
         elif details['operation'] == 'equipment_status':
             global saved_details
             saved_details = details
-            global _requests_queue 
-            global flags_read_attemt
-            flags_read_attemt = 3
-            check_flags(details)
-            delivery_required = False
+            print(details)
+            book_storage(details)
         
-        #storage booked, change flag
-        elif details['operation'] == 'storage_status':
+        elif details['operation'] == 'storage_status': 
             st_book = details['bool']
-            delivery_required = False
+            check_flags(details)
+
         
         #mixing failed, unblocking storage and reporting
         elif details['operation'] == 'confirmation':
 
-            #global _requests_queue
             details['operation'] = 'unblock'
             details['deliver_to'] = 'storage'
-            #_requests_queue.put(details)
             proceed_to_deliver(details['id'], details)
 
             #todo : now it's a crutch, should be copy func
             time.sleep(1)
             details['operation'] = 'operation_status'
-            details['deliver_to'] = 'reporter'
-            #_requests_queue.put(details)
-            delivery_required = True
+            details['deliver_to'] = 'crypto'
+            proceed_to_deliver(id, details)
 
         #successfull mixing, decomission blocked storage and reporting
         elif details['operation'] == 'operation_status':
@@ -107,16 +88,13 @@ def handle_event(id: str, details):
             details['deliver_to'] = 'storage'
             proceed_to_deliver(details['id'], details)
             
-            #todo : now it's a crutch, should be copy func
             time.sleep(1)
             details['operation'] = 'operation_status'
-            details['deliver_to'] = 'reporter'
-            delivery_required = True
+            details['deliver_to'] = 'crypto'
+            proceed_to_deliver(id, details)
 
         else:
             print(f"[warning] unknown operation!\n{details}")                
-        if delivery_required:
-            proceed_to_deliver(id, details)
     except Exception as e:
         print(f"[error] failed to handle request: {e}")
 

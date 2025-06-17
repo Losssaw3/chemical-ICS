@@ -36,8 +36,6 @@ def handle_event(id, details_str):
             for x in details['rules']:
                 ind = details['rules'].index(x)
                 print(f"Rule#"+ str(x) + " - " + str(details['result'][ind]) + " : " + details['acts'][ind][1])
-            #todo response using another library
-            #todo server to send this responce, hehe
         else:
             print(f"[warning] unknown operation!\n{details}")                
         if delivery_required:

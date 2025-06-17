@@ -13,25 +13,34 @@ import base64
 
 _requests_queue: multiprocessing.Queue = None
 
+def decrypt(details):
+    details['deliver_to'] = 'mixer'
+    print("decrypt message from connector... , checking sign ...")
+
+def encrypt(details):
+    details['deliver_to'] = 'reporter'
+    print("encrypt critical data to encrypt critical data to make request to DB")
+
+def encrypt_n_sign(details):
+    details['deliver_to'] = 'connector'
+    print("encrypt report... and send it to connector")
 
 def handle_event(id, details_str):
     details = json.loads(details_str)
     print(f"[info] handling event {id}, {details['source']}->{details['deliver_to']}: {details['operation']}")
     try:
-        delivery_required = False
+        if details['operation'] == 'ordering':
+            decrypt(details)
+            proceed_to_deliver(details["id"], details)
+        
         if details['operation'] == 'operation_status':
-            details['operation'] = 'need_acts'
-            details['deliver_to'] = 'document'
-            delivery_required = True
-        elif details['operation'] == 'acts_req':
-            print('[acts] here could be acts generating')
-            details['operation'] = 'acts'
-            details['deliver_to'] = 'crypto'
-            delivery_required = True
-        else:
-            print(f"[warning] unknown operation!\n{details}")                
-        if delivery_required:
-            proceed_to_deliver(id, details)
+            encrypt(details)
+            proceed_to_deliver(details["id"] , details)
+
+        if details['operation'] == 'acts':
+            encrypt_n_sign(details)
+            proceed_to_deliver(details["id"] , details)
+        
     except Exception as e:
         print(f"[error] failed to handle request: {e}")
     
@@ -49,7 +58,7 @@ def consumer_job(args, config):
             reporter_consumer.assign(partitions)
 
     # Subscribe to topic
-    topic = "reporter"
+    topic = "crypto"
     reporter_consumer.subscribe([topic], on_assign=reset_offset)
 
     # Poll for new messages from Kafka and print them.
