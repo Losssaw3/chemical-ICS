@@ -86,7 +86,7 @@ permissions:
 	chmod u+x $(PATH_PREFIX)/monitor/monitor.py
 	chmod u+x $(PATH_PREFIX)/reporter/reporter.py
 	chmod u+x $(PATH_PREFIX)/storage/storage.py
-	chmod u+x $(PATH_PREFIX)/storage/crypto.py
+	chmod u+x $(PATH_PREFIX)/crypto/crypto.py
 
 pipenv:
 	pipenv install -r requirements.txt
